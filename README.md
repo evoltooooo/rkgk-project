@@ -1,0 +1,2 @@
+# rkgk-project
+study thing
