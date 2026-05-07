@@ -1,42 +1,86 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-public class player : MonoBehaviour
+
+public class PlayerMovement : MonoBehaviour
 {
-    [Header("Player Component References")]
-    [SerializeField] Rigidbody2D rb;
+    [SerializeField] private float moveSpeed = 5f;
 
-    [Header("Player Settigns")]
-    [SerializeField] float speed;
-    [SerializeField] float jumpingPower;
+    // Step encounter settings
+    [SerializeField] private float stepDistance = 0.8f;
 
-    [Header("Grounding")]
-    [SerializeField] LayerMask groundLayer;
-    [SerializeField] Transform groundCheck;
+    private Rigidbody2D rb;
+    private Vector2 moveInput;
+    private Animator animator;
 
-    private float horizontal;
+    // Step tracking
+    private Vector2 lastPosition;
+    private float distanceMoved;
 
-    private void FixedUpdate()
+    void Start()
     {
-        rb.linearVelocity = new Vector2(horizontal * speed, rb.linearVelocity.y);
+        rb = GetComponent<Rigidbody2D>();
+        animator = GetComponent<Animator>();
+
+        lastPosition = rb.position;
     }
 
-    #region PLAYER_CONTROLS
+    void FixedUpdate()
+    {
+        rb.linearVelocity = moveInput * moveSpeed;
+
+        TrackSteps();
+    }
+
     public void Move(InputAction.CallbackContext context)
     {
-        horizontal = context.ReadValue<Vector2>().x;
-    }
+        Vector2 rawInput = context.ReadValue<Vector2>();
 
-    public void Jump(InputAction.CallbackContext context)
-    {
-        if(context.performed && IsGrounded())
+        // Strict 4-direction movement
+        if (rawInput.x != 0)
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpingPower);
-        } 
+            moveInput = new Vector2(Mathf.Sign(rawInput.x), 0f);
+        }
+        else if (rawInput.y != 0)
+        {
+            moveInput = new Vector2(0f, Mathf.Sign(rawInput.y));
+        }
+        else
+        {
+            moveInput = Vector2.zero;
+        }
+
+        // Animator handling
+        bool isMoving = moveInput != Vector2.zero;
+
+        animator.SetBool("isWalking", isMoving);
+
+        if (!isMoving)
+        {
+            animator.SetFloat("LastInputX", animator.GetFloat("InputX"));
+            animator.SetFloat("LastInputY", animator.GetFloat("InputY"));
+        }
+
+        animator.SetFloat("InputX", moveInput.x);
+        animator.SetFloat("InputY", moveInput.y);
     }
 
-    private bool IsGrounded()
+    void TrackSteps()
     {
-        return Physics2D.OverlapCapsule(groundCheck.position, new Vector2(1f, 0.1f), CapsuleDirection2D.Horizontal, 0, groundLayer);
+        // Only track while moving
+        if (moveInput == Vector2.zero)
+            return;
+
+        distanceMoved += Vector2.Distance(rb.position, lastPosition);
+
+        lastPosition = rb.position;
+
+        if (distanceMoved >= stepDistance)
+        {
+            distanceMoved = 0f;
+
+            Debug.Log("STEP TAKEN");
+
+            EncounterZone.PlayerStepped();
+        }
     }
-    #endregion
 }
