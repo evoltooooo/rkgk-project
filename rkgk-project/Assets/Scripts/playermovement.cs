@@ -22,6 +22,14 @@ public class PlayerMovement : MonoBehaviour
         animator = GetComponent<Animator>();
 
         lastPosition = rb.position;
+
+        if (PlayerPrefs.HasKey("SpawnX"))
+    {
+        float x = PlayerPrefs.GetFloat("SpawnX");
+        float y = PlayerPrefs.GetFloat("SpawnY");
+
+        transform.position = new Vector2(x, y);
+    }
     }
 
     void FixedUpdate()
